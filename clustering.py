@@ -83,20 +83,24 @@ if __name__ == "__main__":
         )
         unclassified = unclassified.join(last_xk, on="course", how="left")
 
-
-    classified = unclassified.filter(pl.col("distance") <= 60).with_columns(classification=pl.lit("tt"))
-    unclassified = unclassified.filter(pl.col("distance") > 60)
-
-
     unclassified = unclassified.with_columns(
         (pl.col("elevation_gain") / pl.col("distance")).alias("gradient"),
     )
+    num_clusters = 6
+
+    classified = unclassified.filter(pl.col("distance") <= 60).with_columns(predicted_labels=pl.lit(num_clusters - 1))
+    unclassified = unclassified.filter(pl.col("distance") > 60)
+
+
     scatter_plot(unclassified, "distance", "gradient")
-
-
 
     x = unclassified.select(pl.col(pl.NUMERIC_DTYPES))
     x = standard_scale(x, x.columns)
-    kmeans = KMeans(n_clusters=5, random_state=0, n_init="auto").fit_predict(x)
+    kmeans = KMeans(n_clusters=num_clusters - 1, random_state=0, n_init="auto").fit_predict(x)
     unclassified = unclassified.with_columns(predicted_labels=pl.Series(kmeans))
-    check = unclassified.select("course", "real_classification", "predicted_labels")
+
+    classified = pl.concat([classified.select("course", "real_classification", "predicted_labels"), unclassified.select("course", "real_classification", "predicted_labels")]).sort("course")
+
+    # TODO:
+    #  Count number of climbs, average climb length
+    #  Climb in first 50km is more likely for breakaways
