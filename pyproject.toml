@@ -12,4 +12,5 @@ dependencies = [
     "polars>=1.22.0",
     "requests>=2.32.3",
     "ruff>=0.9.6",
+    "scikit-learn>=1.6.1",
 ]
