@@ -2,13 +2,10 @@ import math
 import os
 import re
 from tqdm import tqdm
-from typing import Optional, List, Dict
+from typing import Optional
 
 import polars as pl
 import gpxpy
-import overpy
-from shapely import LineString
-from pyproj import Transformer
 
 
 def add_leading_zero_to_numbers(s: str) -> str:
@@ -23,46 +20,6 @@ def add_leading_zero_to_numbers(s: str) -> str:
     """
     return re.sub(r"\d+", lambda match: f"{int(match.group(0)):02d}", s)
 
-
-def get_surface(longitudes: List[float], latitudes: List[float]) -> Dict[str, float]:
-    api = overpy.Overpass()
-
-    # Overpass QL query: find all ways in the bounding box that have a "surface" tag.
-    course = LineString([(lon, lat) for lon, lat in zip(longitudes, latitudes)]).buffer(0.01)
-
-    polygon_str = " ".join(f"{lat} {lon}" for lon, lat in course.exterior.coords)
-    query = f"""
-                    [out:json][timeout:25];
-                    (
-                      way(poly:"{polygon_str}")["surface"];
-                    );
-                    out body;
-                    >;
-                    out skel qt;
-                    """
-    result = api.query(query)
-
-    transformer = Transformer.from_crs("EPSG:4326", "EPSG:3035", always_xy=True)
-
-    course = LineString([transformer.transform(lon, lat) for lon, lat in zip(longitudes, latitudes)])
-    paved_surfaces = {
-        "asphalt", "concrete", "paving_stones", "cobblestone",
-        "concrete:plates", "sett", "metal", "wood", "unhewn_cobblestone"
-    }
-    unpaved_surfaces = {
-        "gravel", "dirt", "ground", "grass", "sand", "compacted", "fine_gravel"
-    }
-    surface_category = {surface: "paved" for surface in paved_surfaces}
-    surface_category.update({surface: "unpaved" for surface in unpaved_surfaces})
-    surface_counts = {}
-    for way in result.ways:
-        way_line = LineString([transformer.transform(float(n.lon), float(n.lat)) for n in way.nodes])
-        intersection_length = way_line.buffer(10, cap_style="flat").intersection(course).length / 1000
-        surface = way.tags.get("surface", "unknown")
-        surface_cat = surface_category.get(surface, "unknown")
-        surface_counts[surface_cat] = surface_counts.get(surface_cat, 0) + intersection_length
-
-    return surface_counts
 
 def gpx_files_to_polars(gpx_dir: str) -> pl.DataFrame:
     """
@@ -100,13 +57,6 @@ def gpx_files_to_polars(gpx_dir: str) -> pl.DataFrame:
                     )
                     lats.append(point.latitude)
                     lons.append(point.longitude)
-
-        # Get the surface types
-        # TODO: Dit is op etappe niveau, niet op segment niveau dus miss is dit niet de beste plek om te verzamelen
-        try:
-            surface_counts = get_surface(lons, lats)
-        except overpy.exception.OverpassRuntimeError as e:
-            continue
 
 
     # Create a Polars DataFrame
