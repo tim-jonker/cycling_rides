@@ -41,6 +41,7 @@ def gpx_files_to_polars(gpx_dir: str) -> pl.DataFrame:
         # Iterate through tracks, segments, and points
         lats = []
         lons = []
+        race = gpx_dir[:-4]
         for track in gpx.tracks:
             for segment in track.segments:
                 for point in segment.points:
@@ -48,7 +49,7 @@ def gpx_files_to_polars(gpx_dir: str) -> pl.DataFrame:
                     rows.append(
                         (
                             add_leading_zero_to_numbers(
-                                gpx_file.replace("-route.gpx", "-tdf2024")
+                                gpx_file.replace("-route.gpx", f"-{race}").replace("-parcours.gpx", f"-{race}")
                             ),
                             point.longitude,  # longitude
                             point.latitude,  # latitude

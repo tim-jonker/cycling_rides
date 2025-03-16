@@ -97,14 +97,15 @@ def group_data(data: pl.DataFrame, window_size: Optional[float]) -> pl.DataFrame
     unclassified = data.group_by("course", maintain_order=True).agg(
         pl.sum("elevation_gain", "distance"), pl.col("longitude"), pl.col("latitude")
     )
-    return (
-        unclassified
-        .with_columns(
-            pl.struct('longitude', 'latitude')
-            .map_elements(lambda r: get_surface(r['longitude'], r['latitude']), return_dtype=pl.Float64)
-            .alias('f_unpaved')
-        )
-    )
+    # return (
+    #     unclassified
+    #     .with_columns(
+    #         pl.struct('longitude', 'latitude')
+    #         .map_elements(lambda r: get_surface(r['longitude'], r['latitude']), return_dtype=pl.Float64)
+    #         .alias('f_unpaved')
+    #     )
+    # )
+    return unclassified.with_columns(pl.lit(0).alias("f_unpaved"))
 
 
 def climb_count(df: pl.DataFrame, segment_length: float) -> pl.DataFrame:
@@ -206,34 +207,34 @@ if __name__ == "__main__":
     corner_info = corner_count(data, segment_length=0.1)
     unclassified = unclassified.join(corner_info, on="course", how="left").fill_null(0)
 
-    unclassified = unclassified.with_columns(
-        real_classification=pl.Series(
-            [
-                "hill",
-                "hill",
-                "flat",
-                "mountain",
-                "flat",
-                "flat",
-                "tt",
-                "hill",
-                "gravel",
-                "flat",
-                "hill",
-                "hill",
-                "hill",
-                "mountain",
-                "mountain",
-                "flat",
-                "hill",
-                "hill",
-                "mountain",
-                "mountain",
-                "tt",
-            ],
-            strict=False,
-        )
-    )
+    # unclassified = unclassified.with_columns(
+    #     real_classification=pl.Series(
+    #         [
+    #             "hill",
+    #             "hill",
+    #             "flat",
+    #             "mountain",
+    #             "flat",
+    #             "flat",
+    #             "tt",
+    #             "hill",
+    #             "gravel",
+    #             "flat",
+    #             "hill",
+    #             "hill",
+    #             "hill",
+    #             "mountain",
+    #             "mountain",
+    #             "flat",
+    #             "hill",
+    #             "hill",
+    #             "mountain",
+    #             "mountain",
+    #             "tt",
+    #         ],
+    #         strict=False,
+    #     )
+    # )
     for last_x in [30, 10, 1]:
         last_xk = data.filter(pl.col("distance_from_end") <= last_x)
         last_xk = last_xk.group_by("course", maintain_order=True).agg(
@@ -262,12 +263,12 @@ if __name__ == "__main__":
 
     scatter_plot(unclassified, "distance", "gradient")
 
-    x = unclassified.select(pl.col(pl.NUMERIC_DTYPES))
+    x = unclassified.select(pl.col(pl.NUMERIC_DTYPES)).drop("f_unpaved")
     x = standard_scale(x, x.columns)
     kmeans = KMeans(n_clusters=num_clusters - classified["predicted_labels"].n_unique(), random_state=0, n_init="auto").fit_predict(x)
     unclassified = unclassified.with_columns(predicted_labels=pl.Series(kmeans))
 
-    classified = pl.concat([classified.select("course", "real_classification", "predicted_labels"), unclassified.select("course", "real_classification", "predicted_labels")]).sort("course")
+    classified = pl.concat([classified.select("course", "predicted_labels"), unclassified.select("course", "predicted_labels")]).sort("course")
 
     # TODO:
     #  Count number of corners

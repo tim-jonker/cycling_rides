@@ -93,7 +93,7 @@ def scatter_plot(df: pl.DataFrame, x_col: str, y_col: str):
         df,
         x=x_col,
         y=y_col,
-        color="real_classification",
+        # color="real_classification",
         title=f"{x_col} vs. {y_col}",
         hover_data=["course"]
     )
