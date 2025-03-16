@@ -1,3 +1,4 @@
+import math
 from typing import List, Optional
 
 import polars as pl
@@ -106,16 +107,104 @@ def group_data(data: pl.DataFrame, window_size: Optional[float]) -> pl.DataFrame
     )
 
 
+def climb_count(df: pl.DataFrame, segment_length: float) -> pl.DataFrame:
+    """Counts the number of climbs, average climb height and average gradient per course."""
+    smoothed = smooth_data(df, segment_length)
+    return smoothed.select(
+        "course", "elevation", "distance_from_start"
+    ).with_columns(
+        (pl.col("elevation").shift(-1).over("course") - pl.col("elevation")).alias("elevation_diff"),
+        (pl.col("distance_from_start").shift(-1).over("course") - pl.col("distance_from_start")).alias("d_diff")
+    ).with_columns(
+        # Climbing when roughly 1% gradient
+        pl.when(pl.col("elevation_diff") > segment_length * 10)
+        .then(pl.lit("climbing"))
+        # Descending when roughly -1% gradient
+        .when(pl.col("elevation_diff") < -segment_length * 10)
+        .then(pl.lit("descending"))
+        # Flat interruptions up to 5km are allowed
+        .forward_fill(limit=int(5 / segment_length))
+        .fill_null(pl.lit("flat"))
+        .alias("vertical_direction")
+    ).with_columns(
+        (pl.col("vertical_direction").shift(1).over("course") != pl.col("vertical_direction")).backward_fill().alias(
+            "change_direction")
+    ).with_columns(
+        pl.col("change_direction").cum_sum().over("course")
+    ).group_by(["course", "change_direction"], maintain_order=True).agg(
+        pl.sum("elevation_diff").alias("meters_climbed"),
+        pl.sum("d_diff").alias("horizontal_dist")
+    ).with_columns(
+        (pl.col("meters_climbed") / (pl.col("horizontal_dist") * 10)).alias("average_gradient")
+    ).filter(
+        # Classify climbs as 3-100% gradient
+        (pl.col("average_gradient") > 3) & (pl.col("average_gradient") < 100)
+    ).group_by("course", maintain_order=True).agg(
+        pl.count("change_direction").alias("n_climbs"),
+        pl.mean("meters_climbed").alias("average_climb_height"),
+        pl.mean("average_gradient").alias("average_gradient")
+    )
+
+
+def corner_count(df: pl.DataFrame, segment_length: float) -> pl.DataFrame:
+    deg_to_rad = math.pi / 180
+    smoothed = smooth_data(df, segment_length)
+    return smoothed.select(
+        "course", "longitude", "latitude", "distance_from_start"
+    ).with_columns(
+        pl.col("longitude").shift(-1).over("course").alias("next_longitude"),
+        pl.col("latitude").shift(-1).over("course").alias("next_latitude"),
+        (pl.col("distance_from_start").shift(-1).over("course") - pl.col("distance_from_start")).alias("d_diff")
+    ).with_columns(
+        # Convert degrees to radians for each coordinate
+        (pl.col("latitude") * deg_to_rad).alias("lat1_rad"),
+        (pl.col("longitude") * deg_to_rad).alias("lon1_rad"),
+        (pl.col("next_latitude") * deg_to_rad).alias("lat2_rad"),
+        (pl.col("next_longitude") * deg_to_rad).alias("lon2_rad"),
+    ).with_columns(
+        # Compute the difference in longitude (in radians)
+        (pl.col("lon2_rad") - pl.col("lon1_rad")).alias("delta_lon")
+    ).with_columns(
+        # Calculate x and y components for the bearing formula
+        (pl.col("delta_lon").sin() * pl.col("lat2_rad").cos()).alias("x"),
+        (
+                pl.col("lat1_rad").cos() * pl.col("lat2_rad").sin()
+                - pl.col("lat1_rad").sin() * pl.col("lat2_rad").cos() * pl.col("delta_lon").cos()
+        ).alias("y")
+    ).with_columns(
+        # Compute initial bearing in radians using vectorized atan2,
+        # then convert to degrees and normalize to [0, 360)
+        ((pl.arctan2(pl.col("x"), pl.col("y")) * 180 / math.pi + 360) % 360).alias("bearing")
+    ).with_columns(
+        (((pl.col("bearing") - pl.col("bearing").shift(1).over("course") + 180) % 360) - 180).abs().alias(
+            "bearing_change")
+    ).with_columns(
+        (pl.col("bearing_change") > 30).alias("corner")
+    ).group_by("course", maintain_order=True).agg(
+        (pl.sum("corner") / pl.max("distance_from_start")).alias("num_corners_per_km"),
+        (pl.sum("bearing_change") / pl.max("distance_from_start")).alias("bearing_change_per_km")
+    )
+
+
 if __name__ == "__main__":
-    load_data = True
-    gpx_directory = "tdf_2024_gpx"
-    data = prepare_data(gpx_directory)
+    load_data = False
+    gpx_directory = [
+        "tdf_2024_gpx",
+        "giro_2024_gpx",
+        "vuelta_2024_gpx",
+    ]
+    data = pl.concat([prepare_data(directory) for directory in gpx_directory])
 
     if load_data:
         unclassified = pl.read_parquet("unclassified.parquet")
     else:
         unclassified = group_data(data, None)
         unclassified.write_parquet("unclassified.parquet")
+
+    climb_info = climb_count(data, segment_length=1)
+    unclassified = unclassified.join(climb_info, on="course", how="left").fill_null(0)
+    corner_info = corner_count(data, segment_length=0.1)
+    unclassified = unclassified.join(corner_info, on="course", how="left").fill_null(0)
 
     unclassified = unclassified.with_columns(
         real_classification=pl.Series(
@@ -181,4 +270,4 @@ if __name__ == "__main__":
     classified = pl.concat([classified.select("course", "real_classification", "predicted_labels"), unclassified.select("course", "real_classification", "predicted_labels")]).sort("course")
 
     # TODO:
-    #  Count number of climbs, average climb length
+    #  Count number of corners

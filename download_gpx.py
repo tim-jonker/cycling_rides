@@ -4,10 +4,7 @@ from bs4 import BeautifulSoup
 from urllib.parse import urljoin
 
 
-def download_tdf_2024_gpx():
-    # URL containing the GPX links
-    base_url = "https://www.cyclingstage.com/tour-de-france-2024-gpx/"
-
+def download_gpx(base_url: str, output_dir: str = "tdf_2024_gpx"):
     # Fetch the page
     response = requests.get(base_url)
     response.raise_for_status()  # raise an error if the request failed
@@ -25,7 +22,6 @@ def download_tdf_2024_gpx():
             gpx_links.append(full_gpx_url)
 
     # (Optional) Create a directory to save GPX files
-    output_dir = "tdf_2024_gpx"
     os.makedirs(output_dir, exist_ok=True)
 
     # Download each GPX file
@@ -45,4 +41,15 @@ def download_tdf_2024_gpx():
 
 
 if __name__ == "__main__":
-    download_tdf_2024_gpx()
+    links = [
+        "https://www.cyclingstage.com/tour-de-france-2024-gpx/",
+        "https://www.cyclingstage.com/giro-2024-gpx/",
+        "https://www.cyclingstage.com/vuelta-2024-gpx/",
+    ]
+    races = [
+        "tdf_2024_gpx",
+        "giro_2024_gpx",
+        "vuelta_2024_gpx",
+    ]
+    for link, race in zip(links, races):
+        download_gpx(link, race)
