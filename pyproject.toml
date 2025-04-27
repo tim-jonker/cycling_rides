@@ -12,10 +12,12 @@ dependencies = [
     "pandas>=2.2.3",
     "plotly>=6.0.0",
     "polars>=1.22.0",
+    "pulp>=3.1.1",
     "pyproj>=3.7.1",
     "requests>=2.32.3",
     "ruff>=0.9.6",
     "scikit-learn>=1.6.1",
     "shapely>=2.0.7",
     "tqdm>=4.67.1",
+    "unidecode>=1.4.0",
 ]

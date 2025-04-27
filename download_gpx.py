@@ -42,14 +42,16 @@ def download_gpx(base_url: str, output_dir: str = "tdf_2024_gpx"):
 
 if __name__ == "__main__":
     links = [
-        "https://www.cyclingstage.com/tour-de-france-2024-gpx/",
-        "https://www.cyclingstage.com/giro-2024-gpx/",
-        "https://www.cyclingstage.com/vuelta-2024-gpx/",
+        # "https://www.cyclingstage.com/tour-de-france-2024-gpx/",
+        # "https://www.cyclingstage.com/giro-2024-gpx/",
+        # "https://www.cyclingstage.com/vuelta-2024-gpx/",
+        "https://www.cyclingstage.com/giro-2025-gpx/",
     ]
     races = [
-        "tdf_2024_gpx",
-        "giro_2024_gpx",
-        "vuelta_2024_gpx",
+        # "tdf_2024_gpx",
+        # "giro_2024_gpx",
+        # "vuelta_2024_gpx",
+        "giro_2025_gpx",
     ]
     for link, race in zip(links, races):
         download_gpx(link, race)

@@ -193,6 +193,7 @@ if __name__ == "__main__":
         "tdf_2024_gpx",
         "giro_2024_gpx",
         "vuelta_2024_gpx",
+        "giro_2025_gpx",
     ]
     data = pl.concat([prepare_data(directory) for directory in gpx_directory])
 
