@@ -15,7 +15,7 @@ def read_scorito_data(scorito_extension: int) -> pd.DataFrame:
     link = f'https://cycling.scorito.com/cyclingmanager/v1.0/eventriderenriched/{scorito_extension}'
     response = requests.get(
         link, headers={
-        'User-Agent': 'curl/8.6.0'
+            'User-Agent': 'curl/8.6.0'
         }
     )
     riders = json.loads(response.text)['Content']
@@ -38,7 +38,8 @@ def read_scorito_data(scorito_extension: int) -> pd.DataFrame:
                                'Price': 'Prijs',
                                'TeamId': 'Team'}, inplace=True)
     all_riders['Prijs'] /= 1000000
-    all_riders = all_riders[["fullName", "dayofbirth", 'Prijs', 'Klassement', 'Klimmen', 'Tijdrijden', 'Sprint', 'Punch', 'Heuvels']]
+    all_riders = all_riders[
+        ["fullName", "dayofbirth", 'Prijs', 'Klassement', 'Klimmen', 'Tijdrijden', 'Sprint', 'Punch', 'Heuvels']]
     all_riders.fillna(0, inplace=True)
     return all_riders
 
@@ -46,7 +47,7 @@ def read_scorito_data(scorito_extension: int) -> pd.DataFrame:
 def read_wielerorakel(pages: int) -> pd.DataFrame:
     all_riders = pd.DataFrame()
     for page in tqdm(range(1, pages + 1)):
-        query_string = r'''query FetchRiders($take: Int!, $page: Int!, $gender: Gender!, $search: String!, $orderBy: OrderByDto) {
+        query_string = r'''query FetchRiders($take: Int!, $page: Int!, $gender: Gender!, $search: String!, $orderBy: [OrderByDto!]) {
                 fetchRiders(take: $take, page: $page, gender: $gender, search: $search, orderBy: $orderBy) {
                     count
                     riders {
@@ -91,11 +92,11 @@ def read_wielerorakel(pages: int) -> pd.DataFrame:
                 "page": page,
                 "gender": "MEN",
                 "search": "",
-                "orderBy": {
+                "orderBy": [{
                     "field": "fullName",
                     "orderBy": "ASC",
                     "nestedField": None
-                }
+                }]
             }
         }
         response = requests.post(
@@ -148,6 +149,7 @@ def read_wielerorakel(pages: int) -> pd.DataFrame:
             "Cristian Scaroni": "Christian Scaroni",
             "Isaac Del Toro": "Isaac del Toro",
             "Mattias Skjelmose": "Mattias Skjelmose Jensen",
+            "Jefferson Cepeda": "Jefferson Alveiro Cepeda"
         }, inplace=True
     )
     return all_riders
@@ -188,7 +190,7 @@ def save_gpx_to_disk(year: int, stage: int, download: bool):
         return filename
 
 
-def read_all_gpx_of_edition(year: int, download: bool =False) -> List[List[Point]]:
+def read_all_gpx_of_edition(year: int, download: bool = False) -> List[List[Point]]:
     all_stages = []
     for stage in tqdm(range(1, 22)):
         filename = save_gpx_to_disk(year, stage, download=download)

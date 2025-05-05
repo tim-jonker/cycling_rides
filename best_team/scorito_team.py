@@ -47,27 +47,27 @@ def required_skill() -> pd.DataFrame:
 def stage_classification() -> pd.DataFrame:
     return pd.DataFrame.from_dict(
         {
-            1: "TTShort",
-            2: "SprintHill",
-            3: "Sprint",
-            4: "GC",
-            5: "Sprint",
-            6: "HillBreakaway",
-            7: "SprintHill",
-            8: "GC", # Kan een vluchter bij
+            1: "SprintHill",
+            2: "TTShort",
+            3: "HillBreakaway",
+            4: "Sprint",
+            5: "SprintHill",
+            6: "Sprint",
+            7: "Breakaway",
+            8: "Breakaway",
             9: "GC",
-            10: "MountainBreakaway",
-            11: "MountainBreakaway",
-            12: "GC",
-            13: "GC", # Of mountain breakaway
-            14: "HillBreakaway", # WvA is hier ook goed
-            15: "GC",
+            10: "TTLong",
+            11: "HillGC",
+            12: "Sprint",
+            13: "GC",
+            14: "Sprint",
+            15: "MountainBreakaway",
             16: "GC",
-            17: "Sprint",
-            18: "Breakaway",
+            17: "GCMountain",
+            18: "SprintHill",
             19: "GC",
             20: "GC",
-            21: "TTShort",
+            21: "Sprint",
         }, orient="index", columns=["Type"]
     )
 
@@ -190,13 +190,13 @@ def model(scores: pd.DataFrame, data: pd.DataFrame, hardcode_pick: List[str], ha
 if __name__ == "__main__":
     # gpx_data = read_all_gpx_of_edition(2023, download=False)
 
-    scorito = read_scorito_data(SCORITO_EXTENSION)
-    riders = read_wielerorakel(NUMBER_OF_PAGES)
-    combined = scorito.merge(riders, on=["fullName", "dayofbirth"], how="left", validate="1:1")
-    combined.to_excel('ScoritoDownload.xlsx', sheet_name='2024')
-    missing_riders = combined.loc[combined["average"].isna(), "fullName"]
+    # scorito = read_scorito_data(SCORITO_EXTENSION)
+    # riders = read_wielerorakel(NUMBER_OF_PAGES)
+    # combined = scorito.merge(riders, on=["fullName", "dayofbirth"], how="left", validate="1:1")
+    # combined.to_excel('ScoritoDownload.xlsx', sheet_name='2025')
+    # missing_riders = combined.loc[combined["average"].isna(), "fullName"]
 
-    data = pd.read_excel('Wielrennen.xlsx', sheet_name='Vuelta2024', index_col=0)
+    data = pd.read_excel('Wielrennen.xlsx', sheet_name='Giro2025', index_col=0)
     data.dropna(subset=["average"], inplace=True)
     data.fillna(0, inplace=True)
     data.loc[data["gc"] < 70, "gc"] = 0
@@ -218,19 +218,6 @@ if __name__ == "__main__":
     # Riders that are not participating
     data = data.loc[
            ~data.index.isin([
-               "Elia Viviani",
-               "Geraint Thomas",
-               "Maxim Van Gils",
-               "Caleb Ewan",
-               "Juan Ayuso",
-               "Stefan Kung",
-               "Andrea Vendrame",
-               "Max Walscheid",
-               "Gerben Thijssen",
-               "Luka Mezgec",
-               'Kasper Asgreen',
-               # 'Mauri Vansevenant',
-               # 'Bryan Coquard',
            ]),
            :]
 
