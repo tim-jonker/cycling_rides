@@ -12,34 +12,47 @@ import gpxpy.gpx
 
 
 def read_scorito_data(scorito_extension: int) -> pd.DataFrame:
-    link = f'https://cycling.scorito.com/cyclingmanager/v1.0/eventriderenriched/{scorito_extension}'
-    response = requests.get(
-        link, headers={
-            'User-Agent': 'curl/8.6.0'
-        }
-    )
-    riders = json.loads(response.text)['Content']
+    link = f"https://cycling.scorito.com/cyclingmanager/v1.0/eventriderenriched/{scorito_extension}"
+    response = requests.get(link, headers={"User-Agent": "curl/8.6.0"})
+    riders = json.loads(response.text)["Content"]
     for idx, rider in enumerate(riders):
-        for key in rider['Qualities']:
-            riders[idx]["Type " + str(key['Type'])] = key['Value']
+        for key in rider["Qualities"]:
+            riders[idx]["Type " + str(key["Type"])] = key["Value"]
     all_riders = pd.DataFrame(riders)
     all_riders.rename(columns={"BirthDate": "dayofbirth"}, inplace=True)
     all_riders["dayofbirth"] = all_riders["dayofbirth"].apply(
-        lambda x: datetime.strptime(x, "%Y-%m-%dT%H:%M:%S").date())
+        lambda x: datetime.strptime(x, "%Y-%m-%dT%H:%M:%S").date()
+    )
     all_riders["fullName"] = all_riders["FirstName"] + " " + all_riders["LastName"]
     all_riders["fullName"].replace({"-": " ", "_": " "}, regex=True, inplace=True)
     all_riders["fullName"] = all_riders["fullName"].apply(lambda x: unidecode(x))
-    all_riders.rename(columns={'Type 0': 'Klassement',
-                               'Type 1': 'Klimmen',
-                               'Type 2': 'Tijdrijden',
-                               'Type 3': 'Sprint',
-                               'Type 4': 'Punch',
-                               'Type 5': 'Heuvels',
-                               'Price': 'Prijs',
-                               'TeamId': 'Team'}, inplace=True)
-    all_riders['Prijs'] /= 1000000
+    all_riders.rename(
+        columns={
+            "Type 0": "Klassement",
+            "Type 1": "Klimmen",
+            "Type 2": "Tijdrijden",
+            "Type 3": "Sprint",
+            "Type 4": "Punch",
+            "Type 5": "Heuvels",
+            "Price": "Prijs",
+            "TeamId": "Team",
+        },
+        inplace=True,
+    )
+    all_riders["Prijs"] /= 1000000
     all_riders = all_riders[
-        ["fullName", "dayofbirth", 'Prijs', 'Klassement', 'Klimmen', 'Tijdrijden', 'Sprint', 'Punch', 'Heuvels']]
+        [
+            "fullName",
+            "dayofbirth",
+            "Prijs",
+            "Klassement",
+            "Klimmen",
+            "Tijdrijden",
+            "Sprint",
+            "Punch",
+            "Heuvels",
+        ]
+    ]
     all_riders.fillna(0, inplace=True)
     return all_riders
 
@@ -47,7 +60,7 @@ def read_scorito_data(scorito_extension: int) -> pd.DataFrame:
 def read_wielerorakel(pages: int) -> pd.DataFrame:
     all_riders = pd.DataFrame()
     for page in tqdm(range(1, pages + 1)):
-        query_string = r'''query FetchRiders($take: Int!, $page: Int!, $gender: Gender!, $search: String!, $orderBy: [OrderByDto!]) {
+        query_string = r"""query FetchRiders($take: Int!, $page: Int!, $gender: Gender!, $search: String!, $orderBy: [OrderByDto!]) {
                 fetchRiders(take: $take, page: $page, gender: $gender, search: $search, orderBy: $orderBy) {
                     count
                     riders {
@@ -83,7 +96,7 @@ def read_wielerorakel(pages: int) -> pd.DataFrame:
                         }
                     }
                 }
-            }'''
+            }"""
 
         payload = {
             "query": query_string,
@@ -92,12 +105,10 @@ def read_wielerorakel(pages: int) -> pd.DataFrame:
                 "page": page,
                 "gender": "MEN",
                 "search": "",
-                "orderBy": [{
-                    "field": "fullName",
-                    "orderBy": "ASC",
-                    "nestedField": None
-                }]
-            }
+                "orderBy": [
+                    {"field": "fullName", "orderBy": "ASC", "nestedField": None}
+                ],
+            },
         }
         response = requests.post(
             url="https://api.cyclingoracle.com/v1",
@@ -105,9 +116,9 @@ def read_wielerorakel(pages: int) -> pd.DataFrame:
                 "accept": "application/json, text/javascript, */*; q=0.01",
                 "accept-language": "en-GB,en-US;q=0.9,en;q=0.8,nl;q=0.7",
                 "content-type": "application/json",
-                "sec-ch-ua": "\"Google Chrome\";v=\"113\", \"Chromium\";v=\"113\", \"Not-A.Brand\";v=\"24\"",
+                "sec-ch-ua": '"Google Chrome";v="113", "Chromium";v="113", "Not-A.Brand";v="24"',
                 "sec-ch-ua-mobile": "?0",
-                "sec-ch-ua-platform": "\"macOS\"",
+                "sec-ch-ua-platform": '"macOS"',
                 "sec-fetch-dest": "empty",
                 "sec-fetch-mode": "cors",
                 "sec-fetch-site": "same-site",
@@ -128,14 +139,35 @@ def read_wielerorakel(pages: int) -> pd.DataFrame:
             del rider["currentStats"]
             del rider["currentTeam"]
         df = pd.DataFrame(riders)
-        df = df[['fullName', 'nation', 'length', 'weight',
-                 'dayofbirth', 'flat', 'cobble', 'hill', 'mountain', 'sprint',
-                 'timetrial', 'gc', 'onedaypoints', 'stagespoints', 'average', 'leadout',
-                 'ttshort', 'ttlong', 'formtotal', 'team']]
+        df = df[
+            [
+                "fullName",
+                "nation",
+                "length",
+                "weight",
+                "dayofbirth",
+                "flat",
+                "cobble",
+                "hill",
+                "mountain",
+                "sprint",
+                "timetrial",
+                "gc",
+                "onedaypoints",
+                "stagespoints",
+                "average",
+                "leadout",
+                "ttshort",
+                "ttlong",
+                "formtotal",
+                "team",
+            ]
+        ]
         all_riders = pd.concat([all_riders, df])
 
     all_riders["dayofbirth"] = all_riders["dayofbirth"].apply(
-        lambda x: datetime.strptime(x, "%Y-%m-%dT%H:%M:%S.000Z").date())
+        lambda x: datetime.strptime(x, "%Y-%m-%dT%H:%M:%S.000Z").date()
+    )
     all_riders["fullName"] = all_riders["fullName"].apply(lambda x: unidecode(x))
     all_riders["fullName"].replace({"-": " ", "_": " "}, regex=True, inplace=True)
     all_riders["fullName"].replace(
@@ -149,8 +181,9 @@ def read_wielerorakel(pages: int) -> pd.DataFrame:
             "Cristian Scaroni": "Christian Scaroni",
             "Isaac Del Toro": "Isaac del Toro",
             "Mattias Skjelmose": "Mattias Skjelmose Jensen",
-            "Jefferson Cepeda": "Jefferson Alveiro Cepeda"
-        }, inplace=True
+            "Jefferson Cepeda": "Jefferson Alveiro Cepeda",
+        },
+        inplace=True,
     )
     return all_riders
 
@@ -163,25 +196,27 @@ class Point:
 
 
 def read_gpx_file(file_name: str) -> List[Point]:
-    gpx_file = open(file_name, 'r')
+    gpx_file = open(file_name, "r")
     gpx = gpxpy.parse(gpx_file)
     all_points = []
     for track in gpx.tracks:
         for segment in track.segments:
             for point in segment.points:
-                all_points.append(Point(point.latitude, point.longitude, point.elevation))
+                all_points.append(
+                    Point(point.latitude, point.longitude, point.elevation)
+                )
     return all_points
 
 
 def save_gpx_to_disk(year: int, stage: int, download: bool):
-    url = f'https://cdn.touretappe.nl/images/tour-de-france/{year}/etappe-{stage}-route.gpx'
-    filename = f'gpx_files/etappe-{year}-{stage}.gpx'
+    url = f"https://cdn.touretappe.nl/images/tour-de-france/{year}/etappe-{stage}-route.gpx"
+    filename = f"gpx_files/etappe-{year}-{stage}.gpx"
 
     if download:
         response = requests.get(url)
 
         if response.status_code == 200:
-            with open(filename, 'wb') as file:
+            with open(filename, "wb") as file:
                 file.write(response.content)
             return filename
         else:

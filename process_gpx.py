@@ -49,7 +49,9 @@ def gpx_files_to_polars(gpx_dir: str) -> pl.DataFrame:
                     rows.append(
                         (
                             add_leading_zero_to_numbers(
-                                gpx_file.replace("-route.gpx", f"-{race}").replace("-parcours.gpx", f"-{race}")
+                                gpx_file.replace("-route.gpx", f"-{race}").replace(
+                                    "-parcours.gpx", f"-{race}"
+                                )
                             ),
                             point.longitude,  # longitude
                             point.latitude,  # latitude
@@ -58,7 +60,6 @@ def gpx_files_to_polars(gpx_dir: str) -> pl.DataFrame:
                     )
                     lats.append(point.latitude)
                     lons.append(point.longitude)
-
 
     # Create a Polars DataFrame
     df = (
